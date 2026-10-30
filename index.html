@@ -1,0 +1,1539 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>經典霓虹俄羅斯方塊 (Tetris Neon) - 雲端紀錄與排行榜</title>
+  <style>
+    :root {
+      --bg-color: #0b0f19;
+      --card-bg: rgba(20, 27, 45, 0.85);
+      --card-border: rgba(56, 189, 248, 0.25);
+      --neon-blue: #38bdf8;
+      --neon-purple: #c084fc;
+      --neon-yellow: #facc15;
+      --neon-green: #4ade80;
+      --neon-red: #f87171;
+      --neon-orange: #fb923c;
+      --text-main: #f1f5f9;
+      --text-muted: #94a3b8;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      user-select: none;
+      -webkit-user-select: none;
+      touch-action: manipulation;
+    }
+
+    body {
+      background: radial-gradient(circle at 50% 20%, #1e1b4b, var(--bg-color) 80%);
+      color: var(--text-main);
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: flex-start;
+      overflow-x: hidden;
+      padding: 10px;
+    }
+
+    /* 頂部導覽列 */
+    header {
+      width: 100%;
+      max-width: 600px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 8px 12px;
+      margin-bottom: 8px;
+      background: var(--card-bg);
+      border: 1px solid var(--card-border);
+      border-radius: 12px;
+      backdrop-filter: blur(8px);
+      box-shadow: 0 4px 20px rgba(0, 0, 0, 0.4);
+    }
+
+    .title-group {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .title-group h1 {
+      font-size: 1.15rem;
+      font-weight: 800;
+      letter-spacing: 1px;
+      background: linear-gradient(90deg, #38bdf8, #c084fc, #facc15);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+
+    .header-btns {
+      display: flex;
+      gap: 6px;
+    }
+
+    .btn {
+      background: rgba(255, 255, 255, 0.08);
+      color: var(--text-main);
+      border: 1px solid var(--card-border);
+      padding: 6px 12px;
+      border-radius: 8px;
+      font-size: 0.85rem;
+      font-weight: 600;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      text-decoration: none;
+      transition: all 0.2s ease;
+    }
+
+    .btn:hover, .btn:active {
+      background: rgba(56, 189, 248, 0.2);
+      border-color: var(--neon-blue);
+      box-shadow: 0 0 10px rgba(56, 189, 248, 0.4);
+      transform: translateY(-1px);
+    }
+
+    .btn-primary {
+      background: linear-gradient(135deg, #0284c7, #6366f1);
+      border: none;
+      color: #fff;
+    }
+
+    .btn-primary:hover {
+      background: linear-gradient(135deg, #0369a1, #4f46e5);
+      box-shadow: 0 0 15px rgba(99, 102, 241, 0.6);
+    }
+
+    /* 遊戲主版面容器 */
+    .game-container {
+      width: 100%;
+      max-width: 600px;
+      display: flex;
+      justify-content: center;
+      align-items: flex-start;
+      gap: 12px;
+    }
+
+    /* 側邊面板 (Hold / Stats / Next) */
+    .side-panel {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      width: 95px;
+    }
+
+    .panel-box {
+      background: var(--card-bg);
+      border: 1px solid var(--card-border);
+      border-radius: 10px;
+      padding: 8px 6px;
+      text-align: center;
+      box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
+    }
+
+    .panel-title {
+      font-size: 0.75rem;
+      font-weight: 700;
+      color: var(--text-muted);
+      letter-spacing: 0.5px;
+      margin-bottom: 4px;
+      text-transform: uppercase;
+    }
+
+    .panel-value {
+      font-size: 1.15rem;
+      font-weight: 800;
+      color: var(--neon-blue);
+      font-variant-numeric: tabular-nums;
+    }
+
+    canvas.mini-canvas {
+      display: block;
+      margin: 0 auto;
+      background: rgba(0, 0, 0, 0.3);
+      border-radius: 6px;
+    }
+
+    /* 主畫布舞台 */
+    .canvas-wrapper {
+      position: relative;
+      background: #050811;
+      border: 2px solid var(--neon-blue);
+      border-radius: 12px;
+      padding: 2px;
+      box-shadow: 0 0 25px rgba(56, 189, 248, 0.25), inset 0 0 15px rgba(0,0,0,0.8);
+      overflow: hidden;
+    }
+
+    #tetrisCanvas {
+      display: block;
+      background: #070c18;
+      border-radius: 10px;
+    }
+
+    /* 暫停遮罩 / 倒數提示 */
+    .overlay {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(7, 12, 24, 0.88);
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      gap: 15px;
+      backdrop-filter: blur(4px);
+      z-index: 10;
+      border-radius: 10px;
+    }
+
+    .overlay.hidden {
+      display: none;
+    }
+
+    .overlay h2 {
+      font-size: 1.6rem;
+      font-weight: 900;
+      letter-spacing: 1.5px;
+      background: linear-gradient(90deg, #f87171, #fb923c, #facc15);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      text-shadow: 0 0 20px rgba(248, 113, 113, 0.5);
+    }
+
+    /* 手機虛擬控制按鍵 */
+    .mobile-controls {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr) 20px repeat(2, 1fr);
+      grid-template-rows: repeat(2, 48px);
+      gap: 6px;
+      width: 100%;
+      max-width: 500px;
+      margin-top: 10px;
+      padding: 0 5px;
+    }
+
+    .dpad-btn {
+      background: rgba(30, 41, 59, 0.8);
+      border: 1px solid rgba(255, 255, 255, 0.15);
+      color: #fff;
+      font-size: 1.1rem;
+      font-weight: bold;
+      border-radius: 10px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      transition: background 0.1s, transform 0.1s;
+    }
+
+    .dpad-btn:active {
+      background: rgba(56, 189, 248, 0.4);
+      transform: scale(0.95);
+      border-color: var(--neon-blue);
+    }
+
+    .dpad-btn span {
+      font-size: 0.65rem;
+      color: var(--text-muted);
+      font-weight: normal;
+    }
+
+    .btn-hard-drop {
+      background: linear-gradient(135deg, rgba(239, 68, 68, 0.3), rgba(249, 115, 22, 0.3));
+      border-color: var(--neon-orange);
+    }
+
+    .btn-rotate {
+      background: linear-gradient(135deg, rgba(56, 189, 248, 0.3), rgba(192, 132, 252, 0.3));
+      border-color: var(--neon-blue);
+    }
+
+    /* Modal 彈跳視窗 (結算 / 排行榜) */
+    .modal-backdrop {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100vw;
+      height: 100vh;
+      background: rgba(0, 0, 0, 0.75);
+      backdrop-filter: blur(6px);
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      z-index: 100;
+      padding: 15px;
+    }
+
+    .modal-backdrop.hidden {
+      display: none;
+    }
+
+    .modal-box {
+      background: #0f172a;
+      border: 1px solid var(--neon-blue);
+      border-radius: 16px;
+      width: 100%;
+      max-width: 460px;
+      max-height: 90vh;
+      overflow-y: auto;
+      padding: 22px;
+      box-shadow: 0 0 35px rgba(56, 189, 248, 0.3);
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+    }
+
+    .modal-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+      padding-bottom: 10px;
+    }
+
+    .modal-title {
+      font-size: 1.25rem;
+      font-weight: 800;
+      color: var(--neon-yellow);
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .close-btn {
+      background: none;
+      border: none;
+      color: var(--text-muted);
+      font-size: 1.5rem;
+      cursor: pointer;
+      line-height: 1;
+    }
+
+    .close-btn:hover {
+      color: #fff;
+    }
+
+    /* 戰績速報 */
+    .score-summary-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+      background: rgba(15, 23, 42, 0.6);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      border-radius: 12px;
+      padding: 12px;
+    }
+
+    .score-item {
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+    }
+
+    .score-item-label {
+      font-size: 0.75rem;
+      color: var(--text-muted);
+    }
+
+    .score-item-val {
+      font-size: 1.25rem;
+      font-weight: 800;
+      color: #fff;
+    }
+
+    .score-item-val.highlight {
+      color: var(--neon-yellow);
+    }
+
+    /* 個人歷史比較 Badge */
+    .compare-badge {
+      background: rgba(30, 41, 59, 0.7);
+      border-radius: 10px;
+      padding: 12px 14px;
+      border-left: 4px solid var(--neon-green);
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+
+    .compare-badge.new-record {
+      border-left-color: var(--neon-yellow);
+      background: rgba(250, 204, 21, 0.1);
+    }
+
+    .compare-badge.below-record {
+      border-left-color: var(--neon-blue);
+    }
+
+    .compare-title {
+      font-size: 0.9rem;
+      font-weight: 700;
+      color: var(--text-main);
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .compare-detail {
+      font-size: 0.85rem;
+      color: var(--text-muted);
+      line-height: 1.5;
+    }
+
+    /* 輸入姓名欄位 */
+    .input-group {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+
+    .input-group label {
+      font-size: 0.85rem;
+      color: var(--text-muted);
+    }
+
+    .input-field {
+      background: #1e293b;
+      border: 1px solid var(--card-border);
+      color: #fff;
+      padding: 10px 14px;
+      border-radius: 8px;
+      font-size: 1rem;
+      outline: none;
+      transition: border 0.2s;
+    }
+
+    .input-field:focus {
+      border-color: var(--neon-blue);
+      box-shadow: 0 0 10px rgba(56, 189, 248, 0.3);
+    }
+
+    /* 排行榜表格 */
+    .leaderboard-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.85rem;
+      margin-top: 6px;
+    }
+
+    .leaderboard-table th {
+      background: rgba(30, 41, 59, 0.9);
+      color: var(--text-muted);
+      text-align: left;
+      padding: 8px;
+      font-weight: 600;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+    }
+
+    .leaderboard-table td {
+      padding: 8px;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+      color: var(--text-main);
+    }
+
+    .leaderboard-table tr.current-user {
+      background: rgba(56, 189, 248, 0.15);
+      font-weight: 700;
+    }
+
+    .rank-badge {
+      display: inline-block;
+      width: 20px;
+      text-align: center;
+      font-weight: bold;
+    }
+
+    .rank-1 { color: #facc15; }
+    .rank-2 { color: #cbd5e1; }
+    .rank-3 { color: #fb923c; }
+
+    .loading-spinner {
+      display: inline-block;
+      width: 16px;
+      height: 16px;
+      border: 2px solid rgba(255, 255, 255, 0.3);
+      border-radius: 50%;
+      border-top-color: #fff;
+      animation: spin 0.8s linear infinite;
+    }
+
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+
+    footer {
+      margin-top: 15px;
+      font-size: 0.75rem;
+      color: var(--text-muted);
+      text-align: center;
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: center;
+      gap: 15px;
+    }
+
+    footer a {
+      color: var(--neon-blue);
+      text-decoration: none;
+    }
+
+    footer a:hover {
+      text-decoration: underline;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- 頂部資訊與導覽列 -->
+  <header>
+    <div class="title-group">
+      <span>🕹️</span>
+      <h1>TETRIS NEON</h1>
+    </div>
+    <div class="header-btns">
+      <button class="btn" id="soundBtn" title="音效開關">🔊</button>
+      <button class="btn btn-primary" id="openLeaderboardBtn">🏆 排行榜</button>
+    </div>
+  </header>
+
+  <!-- 遊戲主畫面容器 -->
+  <div class="game-container">
+    <!-- 左側面板：暫存 (Hold) 與 數據 -->
+    <div class="side-panel">
+      <div class="panel-box">
+        <div class="panel-title">HOLD</div>
+        <canvas id="holdCanvas" class="mini-canvas" width="80" height="80"></canvas>
+      </div>
+
+      <div class="panel-box">
+        <div class="panel-title">LEVEL</div>
+        <div class="panel-value" id="levelVal">1</div>
+      </div>
+
+      <div class="panel-box">
+        <div class="panel-title">LINES</div>
+        <div class="panel-value" id="linesVal">0</div>
+      </div>
+    </div>
+
+    <!-- 中間遊戲畫布 -->
+    <div class="canvas-wrapper">
+      <canvas id="tetrisCanvas" width="240" height="480"></canvas>
+
+      <!-- 暫停 / 遊戲開始 遮罩 -->
+      <div id="gameOverlay" class="overlay">
+        <h2 id="overlayTitle">TETRIS</h2>
+        <p id="overlaySubtitle" style="font-size: 0.85rem; color: #94a3b8;">經典俄羅斯方塊 • 挑戰全服高分</p>
+        <button class="btn btn-primary" id="startBtn" style="padding: 10px 24px; font-size: 1rem;">▶ 開始遊戲</button>
+      </div>
+    </div>
+
+    <!-- 右側面板：下一個 (Next) 與 分數 -->
+    <div class="side-panel">
+      <div class="panel-box">
+        <div class="panel-title">NEXT</div>
+        <canvas id="nextCanvas" class="mini-canvas" width="80" height="80"></canvas>
+      </div>
+
+      <div class="panel-box">
+        <div class="panel-title">SCORE</div>
+        <div class="panel-value" id="scoreVal">0</div>
+      </div>
+
+      <div class="panel-box">
+        <div class="panel-title">BEST</div>
+        <div class="panel-value" id="bestVal" style="color: var(--neon-yellow);">0</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 手機/觸控螢幕虛擬按鈕手把 -->
+  <div class="mobile-controls">
+    <button class="dpad-btn" id="btnLeft">◀<span>左移</span></button>
+    <button class="dpad-btn" id="btnDown">▼<span>下移</span></button>
+    <button class="dpad-btn" id="btnRight">▶<span>右移</span></button>
+    <div></div>
+    <button class="dpad-btn btn-rotate" id="btnRotate">🔄<span>旋轉</span></button>
+    <button class="dpad-btn btn-hard-drop" id="btnHardDrop">⚡<span>硬降</span></button>
+  </div>
+  <div style="display: flex; gap: 8px; width: 100%; max-width: 500px; margin-top: 4px; padding: 0 5px;">
+    <button class="dpad-btn" id="btnHold" style="flex: 1; height: 38px; font-size: 0.85rem;">📥 暫存方塊 (Hold / C)</button>
+    <button class="dpad-btn" id="btnPause" style="flex: 1; height: 38px; font-size: 0.85rem;">⏸️ 暫停 (P)</button>
+  </div>
+
+  <!-- 底部外部連結 -->
+  <footer>
+    <a href="https://docs.google.com/spreadsheets/d/1YNI2pMSDWuGpvtKT3FT6uN_g4F4tXy4mrt-_HfINg5w/edit" target="_blank" rel="noopener">📊 開啟 Google Sheet 成績總表</a>
+    <span>•</span>
+    <a href="https://docs.google.com/document/d/131QGVckkVFH4ZEmdxIOrnzhBN4NCVobxGHgF9WzWWp0/view" target="_blank" rel="noopener">📖 開啟 Google Doc 遊戲操作指南</a>
+  </footer>
+
+  <!-- Modal 1: 遊戲結束 / 提交成績與個人比較視窗 -->
+  <div id="gameOverModal" class="modal-backdrop hidden">
+    <div class="modal-box">
+      <div class="modal-header">
+        <div class="modal-title">🏁 遊戲結束 (GAME OVER)</div>
+      </div>
+
+      <!-- 本次成績速報 -->
+      <div class="score-summary-grid">
+        <div class="score-item">
+          <span class="score-item-label">本次得分</span>
+          <span class="score-item-val highlight" id="modalFinalScore">0</span>
+        </div>
+        <div class="score-item">
+          <span class="score-item-label">消除行數</span>
+          <span class="score-item-val" id="modalFinalLines">0</span>
+        </div>
+        <div class="score-item">
+          <span class="score-item-label">到達等級</span>
+          <span class="score-item-val" id="modalFinalLevel">1</span>
+        </div>
+        <div class="score-item">
+          <span class="score-item-label">遊戲時間</span>
+          <span class="score-item-val" id="modalFinalTime">00:00</span>
+        </div>
+      </div>
+
+      <!-- 姓名輸入 -->
+      <div class="input-group" id="nameInputSection">
+        <label for="playerNameInput">請輸入您的姓名或暱稱（將記錄至 Google Sheet）：</label>
+        <input type="text" id="playerNameInput" class="input-field" maxlength="20" placeholder="例如：俄羅斯小霸王">
+        <button class="btn btn-primary" id="submitScoreBtn" style="padding: 10px; margin-top: 4px;">
+          🚀 上傳成績並比較紀錄
+        </button>
+      </div>
+
+      <!-- 個人成績歷史比較卡片 (上傳後顯示) -->
+      <div id="personalComparisonSection" class="compare-badge hidden">
+        <div class="compare-title" id="compBadgeTitle">
+          <span>🌟</span> <span>歷史比對分析</span>
+        </div>
+        <div class="compare-detail" id="compBadgeDetail">正在計算比對數據...</div>
+      </div>
+
+      <div style="display: flex; gap: 8px; margin-top: 6px;">
+        <button class="btn" id="modalRestartBtn" style="flex: 1;">🔄 再玩一局</button>
+        <button class="btn btn-primary" id="modalViewRankBtn" style="flex: 1;">🏆 查看全體榜單</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal 2: 全服排行榜視窗 -->
+  <div id="leaderboardModal" class="modal-backdrop hidden">
+    <div class="modal-box">
+      <div class="modal-header">
+        <div class="modal-title">🏆 全球名人堂 (TOP 10)</div>
+        <button class="close-btn" id="closeLeaderboardBtn">&times;</button>
+      </div>
+
+      <!-- 個人歷史最佳小摘要 -->
+      <div id="lbPersonalSummary" style="background: rgba(56, 189, 248, 0.1); border: 1px solid var(--card-border); border-radius: 8px; padding: 8px 12px; font-size: 0.85rem; display: flex; justify-content: space-between; align-items: center;">
+        <span id="lbPlayerSummaryText">載入中...</span>
+      </div>
+
+      <!-- 排行榜清單 -->
+      <div style="overflow-x: auto; max-height: 320px;">
+        <table class="leaderboard-table">
+          <thead>
+            <tr>
+              <th style="width: 35px;">名次</th>
+              <th>玩家姓名</th>
+              <th style="text-align: right;">得分</th>
+              <th style="text-align: right;">行數</th>
+              <th style="text-align: right;">等級</th>
+            </tr>
+          </thead>
+          <tbody id="leaderboardTbody">
+            <tr><td colspan="5" style="text-align: center; color: #94a3b8; padding: 20px;">讀取中...</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 6px;">
+        <a href="https://docs.google.com/spreadsheets/d/1YNI2pMSDWuGpvtKT3FT6uN_g4F4tXy4mrt-_HfINg5w/edit" target="_blank" class="btn" style="font-size: 0.8rem;">📊 開啟 Google Sheet 原始表單</a>
+        <button class="btn btn-primary" id="lbCloseBottomBtn">關閉</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    /* ================================================================
+       1. 遊戲設定與變數初始化
+       ================================================================ */
+    const COLS = 10;
+    const ROWS = 20;
+    const BLOCK_SIZE = 24; // 240 x 480 canvas
+    const MINI_BLOCK_SIZE = 16;
+
+    const tetrisCanvas = document.getElementById("tetrisCanvas");
+    const ctx = tetrisCanvas.getContext("2d");
+    const holdCanvas = document.getElementById("holdCanvas");
+    const holdCtx = holdCanvas.getContext("2d");
+    const nextCanvas = document.getElementById("nextCanvas");
+    const nextCtx = nextCanvas.getContext("2d");
+
+    // 7 種標準七格方塊造型與霓虹色彩
+    const SHAPES = {
+      I: [
+        [0, 0, 0, 0],
+        [1, 1, 1, 1],
+        [0, 0, 0, 0],
+        [0, 0, 0, 0]
+      ],
+      J: [
+        [1, 0, 0],
+        [1, 1, 1],
+        [0, 0, 0]
+      ],
+      L: [
+        [0, 0, 1],
+        [1, 1, 1],
+        [0, 0, 0]
+      ],
+      O: [
+        [1, 1],
+        [1, 1]
+      ],
+      S: [
+        [0, 1, 1],
+        [1, 1, 0],
+        [0, 0, 0]
+      ],
+      T: [
+        [0, 1, 0],
+        [1, 1, 1],
+        [0, 0, 0]
+      ],
+      Z: [
+        [1, 1, 0],
+        [0, 1, 1],
+        [0, 0, 0]
+      ]
+    };
+
+    const COLORS = {
+      I: { fill: "#00f0ff", glow: "rgba(0, 240, 255, 0.6)", light: "#a5f3fc" },
+      J: { fill: "#3b82f6", glow: "rgba(59, 130, 246, 0.6)", light: "#bfdbfe" },
+      L: { fill: "#f97316", glow: "rgba(249, 115, 22, 0.6)", light: "#fed7aa" },
+      O: { fill: "#facc15", glow: "rgba(250, 204, 21, 0.6)", light: "#fef08a" },
+      S: { fill: "#22c55e", glow: "rgba(34, 197, 94, 0.6)", light: "#bbf7d0" },
+      T: { fill: "#a855f7", glow: "rgba(168, 85, 247, 0.6)", light: "#e9d5ff" },
+      Z: { fill: "#ef4444", glow: "rgba(239, 68, 68, 0.6)", light: "#fecaca" }
+    };
+
+    // 遊戲狀態
+    let grid = createGrid();
+    let score = 0;
+    let lines = 0;
+    let level = 1;
+    let gameOver = false;
+    let isPaused = false;
+    let dropInterval = 1000;
+    let lastDropTime = 0;
+    let animationFrameId = null;
+    let gameStartTime = 0;
+    let gameElapsedSeconds = 0;
+
+    let currentPiece = null;
+    let nextPiece = null;
+    let holdPiece = null;
+    let canHold = true;
+    let bag = [];
+
+    // 本地快取
+    let savedPlayerName = localStorage.getItem("tetris_player_name") || "";
+    let localBestScore = parseInt(localStorage.getItem("tetris_best_score") || "0", 10);
+    document.getElementById("bestVal").textContent = localBestScore.toLocaleString();
+    if (savedPlayerName) {
+      document.getElementById("playerNameInput").value = savedPlayerName;
+    }
+
+    /* ================================================================
+       2. Web Audio API 音效合成引擎
+       ================================================================ */
+    let audioCtx = null;
+    let soundEnabled = true;
+
+    function initAudio() {
+      if (!audioCtx) {
+        const AudioContext = window.AudioContext || window.webkitAudioContext;
+        if (AudioContext) audioCtx = new AudioContext();
+      }
+      if (audioCtx && audioCtx.state === "suspended") {
+        audioCtx.resume();
+      }
+    }
+
+    function playTone(freq, type = "sine", duration = 0.1, gainVal = 0.15) {
+      if (!soundEnabled || !audioCtx) return;
+      try {
+        const osc = audioCtx.createOscillator();
+        const gain = audioCtx.createGain();
+        osc.type = type;
+        osc.frequency.setValueAtTime(freq, audioCtx.currentTime);
+        gain.gain.setValueAtTime(gainVal, audioCtx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + duration);
+        osc.connect(gain);
+        gain.connect(audioCtx.destination);
+        osc.start();
+        osc.stop(audioCtx.currentTime + duration);
+      } catch (e) {}
+    }
+
+    const Sound = {
+      move: () => playTone(300, "sine", 0.04, 0.08),
+      rotate: () => playTone(500, "triangle", 0.07, 0.12),
+      drop: () => playTone(150, "square", 0.06, 0.1),
+      hardDrop: () => {
+        playTone(100, "sawtooth", 0.12, 0.15);
+        playTone(200, "triangle", 0.1, 0.1);
+      },
+      hold: () => playTone(420, "sine", 0.08, 0.12),
+      clear: (count) => {
+        const freqs = [523.25, 659.25, 783.99, 1046.5];
+        freqs.slice(0, count).forEach((f, i) => {
+          setTimeout(() => playTone(f, "triangle", 0.15, 0.15), i * 60);
+        });
+      },
+      tetris: () => {
+        [523.25, 659.25, 783.99, 1046.5, 1318.5].forEach((f, i) => {
+          setTimeout(() => playTone(f, "sawtooth", 0.25, 0.18), i * 70);
+        });
+      },
+      levelUp: () => {
+        [440, 554.37, 659.25, 880].forEach((f, i) => {
+          setTimeout(() => playTone(f, "sine", 0.2, 0.15), i * 80);
+        });
+      },
+      gameOver: () => {
+        [300, 260, 220, 180, 130].forEach((f, i) => {
+          setTimeout(() => playTone(f, "sawtooth", 0.2, 0.15), i * 100);
+        });
+      }
+    };
+
+    document.getElementById("soundBtn").addEventListener("click", () => {
+      soundEnabled = !soundEnabled;
+      document.getElementById("soundBtn").textContent = soundEnabled ? "🔊" : "🔇";
+      if (soundEnabled) initAudio();
+    });
+
+    /* ================================================================
+       3. 核心方塊演算法
+       ================================================================ */
+    function createGrid() {
+      return Array.from({ length: ROWS }, () => Array(COLS).fill(0));
+    }
+
+    function getNextFromBag() {
+      if (bag.length === 0) {
+        const pieces = ["I", "J", "L", "O", "S", "T", "Z"];
+        for (let i = pieces.length - 1; i > 0; i--) {
+          const j = Math.floor(Math.random() * (i + 1));
+          [pieces[i], pieces[j]] = [pieces[j], pieces[i]];
+        }
+        bag = pieces;
+      }
+      const type = bag.pop();
+      return {
+        type: type,
+        matrix: SHAPES[type],
+        x: Math.floor(COLS / 2) - Math.ceil(SHAPES[type][0].length / 2),
+        y: 0
+      };
+    }
+
+    function rotate(matrix) {
+      const N = matrix.length;
+      const result = [];
+      for (let i = 0; i < N; i++) {
+        result[i] = [];
+        for (let j = 0; j < N; j++) {
+          result[i][j] = matrix[N - j - 1][i];
+        }
+      }
+      return result;
+    }
+
+    function collide(grid, piece, offset = { x: 0, y: 0 }) {
+      const m = piece.matrix;
+      for (let y = 0; y < m.length; y++) {
+        for (let x = 0; x < m[y].length; x++) {
+          if (m[y][x] !== 0) {
+            const newX = piece.x + x + offset.x;
+            const newY = piece.y + y + offset.y;
+            if (newX < 0 || newX >= COLS || newY >= ROWS) {
+              return true;
+            }
+            if (newY >= 0 && grid[newY][newX] !== 0) {
+              return true;
+            }
+          }
+        }
+      }
+      return false;
+    }
+
+    function merge(grid, piece) {
+      piece.matrix.forEach((row, y) => {
+        row.forEach((value, x) => {
+          if (value !== 0) {
+            const py = piece.y + y;
+            const px = piece.x + x;
+            if (py >= 0 && py < ROWS && px >= 0 && px < COLS) {
+              grid[py][px] = piece.type;
+            }
+          }
+        });
+      });
+    }
+
+    function getGhostPiece() {
+      if (!currentPiece) return null;
+      const ghost = {
+        type: currentPiece.type,
+        matrix: currentPiece.matrix,
+        x: currentPiece.x,
+        y: currentPiece.y
+      };
+      while (!collide(grid, ghost, { x: 0, y: 1 })) {
+        ghost.y++;
+      }
+      return ghost;
+    }
+
+    /* ================================================================
+       4. 遊戲控制動作
+       ================================================================ */
+    function moveLeft() {
+      if (gameOver || isPaused || !currentPiece) return;
+      if (!collide(grid, currentPiece, { x: -1, y: 0 })) {
+        currentPiece.x--;
+        Sound.move();
+        draw();
+      }
+    }
+
+    function moveRight() {
+      if (gameOver || isPaused || !currentPiece) return;
+      if (!collide(grid, currentPiece, { x: 1, y: 0 })) {
+        currentPiece.x++;
+        Sound.move();
+        draw();
+      }
+    }
+
+    function rotatePiece() {
+      if (gameOver || isPaused || !currentPiece) return;
+      const rotated = rotate(currentPiece.matrix);
+      const originalX = currentPiece.x;
+
+      if (!collide(grid, { ...currentPiece, matrix: rotated })) {
+        currentPiece.matrix = rotated;
+        Sound.rotate();
+      } else if (!collide(grid, { ...currentPiece, matrix: rotated, x: originalX + 1 })) {
+        currentPiece.matrix = rotated;
+        currentPiece.x += 1;
+        Sound.rotate();
+      } else if (!collide(grid, { ...currentPiece, matrix: rotated, x: originalX - 1 })) {
+        currentPiece.matrix = rotated;
+        currentPiece.x -= 1;
+        Sound.rotate();
+      }
+      draw();
+    }
+
+    function softDrop() {
+      if (gameOver || isPaused || !currentPiece) return;
+      if (!collide(grid, currentPiece, { x: 0, y: 1 })) {
+        currentPiece.y++;
+        score += 1;
+        updateScoreUI();
+        Sound.move();
+      } else {
+        lockPiece();
+      }
+      draw();
+    }
+
+    function hardDrop() {
+      if (gameOver || isPaused || !currentPiece) return;
+      let dropDistance = 0;
+      while (!collide(grid, currentPiece, { x: 0, y: 1 })) {
+        currentPiece.y++;
+        dropDistance++;
+      }
+      score += dropDistance * 2;
+      updateScoreUI();
+      Sound.hardDrop();
+      lockPiece();
+      draw();
+    }
+
+    function hold() {
+      if (gameOver || isPaused || !currentPiece || !canHold) return;
+      Sound.hold();
+      if (!holdPiece) {
+        holdPiece = currentPiece.type;
+        currentPiece = nextPiece;
+        nextPiece = getNextFromBag();
+      } else {
+        const temp = holdPiece;
+        holdPiece = currentPiece.type;
+        currentPiece = {
+          type: temp,
+          matrix: SHAPES[temp],
+          x: Math.floor(COLS / 2) - Math.ceil(SHAPES[temp][0].length / 2),
+          y: 0
+        };
+      }
+      canHold = false;
+      drawMiniPiece(holdCtx, holdPiece);
+      drawMiniPiece(nextCtx, nextPiece.type);
+      draw();
+    }
+
+    function lockPiece() {
+      merge(grid, currentPiece);
+      canHold = true;
+      clearLines();
+
+      currentPiece = nextPiece;
+      nextPiece = getNextFromBag();
+      drawMiniPiece(nextCtx, nextPiece.type);
+
+      if (collide(grid, currentPiece)) {
+        endGame();
+      }
+    }
+
+    function clearLines() {
+      let linesCleared = 0;
+      for (let y = ROWS - 1; y >= 0; y--) {
+        if (grid[y].every(cell => cell !== 0)) {
+          grid.splice(y, 1);
+          grid.unshift(Array(COLS).fill(0));
+          linesCleared++;
+          y++;
+        }
+      }
+
+      if (linesCleared > 0) {
+        lines += linesCleared;
+        const lineScores = [0, 100, 300, 500, 800];
+        score += (lineScores[linesCleared] || 800) * level;
+
+        if (linesCleared === 4) {
+          Sound.tetris();
+        } else {
+          Sound.clear(linesCleared);
+        }
+
+        const newLevel = Math.floor(lines / 10) + 1;
+        if (newLevel > level) {
+          level = newLevel;
+          dropInterval = Math.max(100, 1000 - (level - 1) * 90);
+          Sound.levelUp();
+        }
+
+        updateScoreUI();
+      }
+    }
+
+    function updateScoreUI() {
+      document.getElementById("scoreVal").textContent = score.toLocaleString();
+      document.getElementById("linesVal").textContent = lines;
+      document.getElementById("levelVal").textContent = level;
+      if (score > localBestScore) {
+        localBestScore = score;
+        localStorage.setItem("tetris_best_score", localBestScore);
+        document.getElementById("bestVal").textContent = localBestScore.toLocaleString();
+      }
+    }
+
+    /* ================================================================
+       5. 畫面渲染系統
+       ================================================================ */
+    function drawBlock(c, x, y, type, size = BLOCK_SIZE, isGhost = false) {
+      const color = COLORS[type];
+      if (!color) return;
+
+      if (isGhost) {
+        c.strokeStyle = color.glow;
+        c.lineWidth = 1.5;
+        c.strokeRect(x * size + 2, y * size + 2, size - 4, size - 4);
+        c.fillStyle = "rgba(255, 255, 255, 0.04)";
+        c.fillRect(x * size + 2, y * size + 2, size - 4, size - 4);
+        return;
+      }
+
+      c.fillStyle = color.fill;
+      c.fillRect(x * size + 1, y * size + 1, size - 2, size - 2);
+
+      c.fillStyle = color.light;
+      c.fillRect(x * size + 2, y * size + 2, size - 4, 3);
+      c.fillRect(x * size + 2, y * size + 2, 3, size - 4);
+
+      c.fillStyle = "rgba(0, 0, 0, 0.15)";
+      c.fillRect(x * size + 5, y * size + 5, size - 10, size - 10);
+    }
+
+    function draw() {
+      ctx.fillStyle = "#070c18";
+      ctx.fillRect(0, 0, tetrisCanvas.width, tetrisCanvas.height);
+
+      ctx.strokeStyle = "rgba(56, 189, 248, 0.05)";
+      ctx.lineWidth = 1;
+      for (let x = 0; x <= COLS; x++) {
+        ctx.beginPath();
+        ctx.moveTo(x * BLOCK_SIZE, 0);
+        ctx.lineTo(x * BLOCK_SIZE, ROWS * BLOCK_SIZE);
+        ctx.stroke();
+      }
+      for (let y = 0; y <= ROWS; y++) {
+        ctx.beginPath();
+        ctx.moveTo(0, y * BLOCK_SIZE);
+        ctx.lineTo(COLS * BLOCK_SIZE, y * BLOCK_SIZE);
+        ctx.stroke();
+      }
+
+      for (let y = 0; y < ROWS; y++) {
+        for (let x = 0; x < COLS; x++) {
+          if (grid[y][x]) {
+            drawBlock(ctx, x, y, grid[y][x]);
+          }
+        }
+      }
+
+      const ghost = getGhostPiece();
+      if (ghost && currentPiece) {
+        ghost.matrix.forEach((row, y) => {
+          row.forEach((val, x) => {
+            if (val !== 0) {
+              drawBlock(ctx, ghost.x + x, ghost.y + y, ghost.type, BLOCK_SIZE, true);
+            }
+          });
+        });
+      }
+
+      if (currentPiece) {
+        currentPiece.matrix.forEach((row, y) => {
+          row.forEach((val, x) => {
+            if (val !== 0) {
+              drawBlock(ctx, currentPiece.x + x, currentPiece.y + y, currentPiece.type);
+            }
+          });
+        });
+      }
+    }
+
+    function drawMiniPiece(c, type) {
+      c.clearRect(0, 0, 80, 80);
+      if (!type) return;
+
+      const matrix = SHAPES[type];
+      const offsetX = (80 - matrix[0].length * MINI_BLOCK_SIZE) / 2;
+      const offsetY = (80 - matrix.length * MINI_BLOCK_SIZE) / 2;
+
+      matrix.forEach((row, y) => {
+        row.forEach((val, x) => {
+          if (val !== 0) {
+            const px = offsetX + x * MINI_BLOCK_SIZE;
+            const py = offsetY + y * MINI_BLOCK_SIZE;
+            c.fillStyle = COLORS[type].fill;
+            c.fillRect(px + 1, py + 1, MINI_BLOCK_SIZE - 2, MINI_BLOCK_SIZE - 2);
+          }
+        });
+      });
+    }
+
+    /* ================================================================
+       6. 遊戲迴圈與生命週期
+       ================================================================ */
+    function gameLoop(time = 0) {
+      if (gameOver) return;
+
+      if (!isPaused) {
+        const delta = time - lastDropTime;
+        if (delta > dropInterval) {
+          softDrop();
+          lastDropTime = time;
+        }
+      }
+
+      animationFrameId = requestAnimationFrame(gameLoop);
+    }
+
+    function startGame() {
+      initAudio();
+      grid = createGrid();
+      score = 0;
+      lines = 0;
+      level = 1;
+      gameOver = false;
+      isPaused = false;
+      dropInterval = 1000;
+      bag = [];
+      holdPiece = null;
+      canHold = true;
+      gameStartTime = Date.now();
+
+      updateScoreUI();
+      drawMiniPiece(holdCtx, null);
+
+      currentPiece = getNextFromBag();
+      nextPiece = getNextFromBag();
+      drawMiniPiece(nextCtx, nextPiece.type);
+
+      document.getElementById("gameOverlay").classList.add("hidden");
+      document.getElementById("gameOverModal").classList.add("hidden");
+
+      lastDropTime = performance.now();
+      if (animationFrameId) cancelAnimationFrame(animationFrameId);
+      animationFrameId = requestAnimationFrame(gameLoop);
+    }
+
+    function togglePause() {
+      if (gameOver) return;
+      isPaused = !isPaused;
+      const overlay = document.getElementById("gameOverlay");
+      if (isPaused) {
+        document.getElementById("overlayTitle").textContent = "暫停中";
+        document.getElementById("overlaySubtitle").textContent = "按繼續以回到遊戲";
+        document.getElementById("startBtn").textContent = "▶ 繼續遊戲";
+        overlay.classList.remove("hidden");
+      } else {
+        overlay.classList.add("hidden");
+      }
+    }
+
+    function endGame() {
+      gameOver = true;
+      Sound.gameOver();
+      if (animationFrameId) cancelAnimationFrame(animationFrameId);
+
+      gameElapsedSeconds = Math.floor((Date.now() - gameStartTime) / 1000);
+      const mins = String(Math.floor(gameElapsedSeconds / 60)).padStart(2, '0');
+      const secs = String(gameElapsedSeconds % 60).padStart(2, '0');
+
+      document.getElementById("modalFinalScore").textContent = score.toLocaleString();
+      document.getElementById("modalFinalLines").textContent = lines;
+      document.getElementById("modalFinalLevel").textContent = level;
+      document.getElementById("modalFinalTime").textContent = `${mins}:${secs}`;
+
+      document.getElementById("gameOverModal").classList.remove("hidden");
+      document.getElementById("nameInputSection").classList.remove("hidden");
+      document.getElementById("personalComparisonSection").classList.add("hidden");
+      document.getElementById("playerNameInput").focus();
+    }
+
+    /* ================================================================
+       7. 鍵盤事件監聽
+       ================================================================ */
+    window.addEventListener("keydown", (e) => {
+      if (["ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight", "Space"].includes(e.code)) {
+        if (!["INPUT", "TEXTAREA"].includes(document.activeElement.tagName)) {
+          e.preventDefault();
+        }
+      }
+
+      if (["INPUT", "TEXTAREA"].includes(document.activeElement.tagName)) return;
+
+      switch (e.code) {
+        case "ArrowLeft":
+        case "KeyA":
+          moveLeft();
+          break;
+        case "ArrowRight":
+        case "KeyD":
+          moveRight();
+          break;
+        case "ArrowDown":
+        case "KeyS":
+          softDrop();
+          break;
+        case "ArrowUp":
+        case "KeyW":
+          rotatePiece();
+          break;
+        case "Space":
+          hardDrop();
+          break;
+        case "KeyC":
+        case "ShiftLeft":
+        case "ShiftRight":
+          hold();
+          break;
+        case "KeyP":
+        case "Escape":
+          togglePause();
+          break;
+      }
+    });
+
+    /* ================================================================
+       8. 手機/觸控螢幕按鈕事件
+       ================================================================ */
+    document.getElementById("btnLeft").addEventListener("click", moveLeft);
+    document.getElementById("btnRight").addEventListener("click", moveRight);
+    document.getElementById("btnDown").addEventListener("click", softDrop);
+    document.getElementById("btnRotate").addEventListener("click", rotatePiece);
+    document.getElementById("btnHardDrop").addEventListener("click", hardDrop);
+    document.getElementById("btnHold").addEventListener("click", hold);
+    document.getElementById("btnPause").addEventListener("click", togglePause);
+    document.getElementById("startBtn").addEventListener("click", () => {
+      if (isPaused) {
+        togglePause();
+      } else {
+        startGame();
+      }
+    });
+
+    /* ================================================================
+       9. 雲端儲存 (Google Form / Sheet) 與個人歷史即時比對系統
+       ================================================================ */
+    const FORM_POST_URL = "https://docs.google.com/forms/d/e/1FAIpQLSeXiTHXCt-4YLBty1BY7FwdQwW_2DxZSpOAl8FMjpwv0omojQ/formResponse";
+    const SHEET_GVIZ_URL = "https://docs.google.com/spreadsheets/d/1YNI2pMSDWuGpvtKT3FT6uN_g4F4tXy4mrt-_HfINg5w/gviz/tq?tqx=out:json";
+
+    const submitBtn = document.getElementById("submitScoreBtn");
+    const nameInput = document.getElementById("playerNameInput");
+
+    // 本地持久化記錄列表
+    function getLocalHistory() {
+      try {
+        return JSON.parse(localStorage.getItem("tetris_all_scores") || "[]");
+      } catch (e) {
+        return [];
+      }
+    }
+
+    function saveLocalRecord(rec) {
+      const history = getLocalHistory();
+      history.push(rec);
+      localStorage.setItem("tetris_all_scores", JSON.stringify(history));
+    }
+
+    submitBtn.addEventListener("click", async () => {
+      const name = nameInput.value.trim();
+      if (!name) {
+        alert("請輸入您的姓名或暱稱！");
+        nameInput.focus();
+        return;
+      }
+
+      localStorage.setItem("tetris_player_name", name);
+      submitBtn.disabled = true;
+      submitBtn.innerHTML = '<span class="loading-spinner"></span> 正在儲存至 Google 雲端...';
+
+      const newRecord = {
+        name: name,
+        score: score,
+        lines: lines,
+        level: level,
+        time: gameElapsedSeconds,
+        timestamp: new Date().toLocaleString()
+      };
+      saveLocalRecord(newRecord);
+
+      // 1. 背景提交至 Google Form (將自動進 Google 雲端資料庫)
+      try {
+        const formData = new URLSearchParams();
+        formData.append("entry.184068486", name);
+        formData.append("entry.654235256", String(score));
+        formData.append("entry.7185070", String(lines));
+        formData.append("entry.199680947", String(level));
+        formData.append("entry.2111803055", String(gameElapsedSeconds));
+
+        fetch(FORM_POST_URL, {
+          method: "POST",
+          mode: "no-cors",
+          headers: { "Content-Type": "application/x-www-form-urlencoded" },
+          body: formData.toString()
+        }).catch(() => {});
+      } catch (e) {}
+
+      // 2. 重新讀取雲端表單資料並做個人成績比對
+      setTimeout(async () => {
+        submitBtn.disabled = false;
+        submitBtn.textContent = "✅ 已成功儲存！";
+        const allRecords = await fetchAllRecords();
+        computeAndDisplayComparison(name, score, allRecords);
+      }, 500);
+    });
+
+    // 從 Google Sheet 公開 GViz API 抓取所有紀錄，並合併本機紀錄
+    async function fetchAllRecords() {
+      let sheetRecords = [];
+      try {
+        const res = await fetch(SHEET_GVIZ_URL);
+        const text = await res.text();
+        const jsonText = text.replace(/^\/\*.*?\*\/\s*google\.visualization\.Query\.setResponse\(/, "").replace(/\);?$/, "");
+        const data = JSON.parse(jsonText);
+        const rows = data.table.rows || [];
+        rows.forEach(r => {
+          const c = r.c || [];
+          if (c[1] && c[2]) {
+            sheetRecords.push({
+              name: String(c[1].v || "").trim(),
+              score: Number(c[2].v) || 0,
+              lines: Number(c[3] ? c[3].v : 0) || 0,
+              level: Number(c[4] ? c[4].v : 1) || 1,
+              time: Number(c[5] ? c[5].v : 0) || 0
+            });
+          }
+        });
+      } catch (e) {
+        console.warn("GViz fetch issue:", e);
+      }
+
+      // 合併本機近期儲存的紀錄（防重複去重）
+      const localHistory = getLocalHistory();
+      localHistory.forEach(lh => {
+        sheetRecords.push({
+          name: lh.name,
+          score: lh.score,
+          lines: lh.lines,
+          level: lh.level,
+          time: lh.time
+        });
+      });
+
+      return sheetRecords;
+    }
+
+    function computeAndDisplayComparison(name, currentScore, allRecords) {
+      const compSection = document.getElementById("personalComparisonSection");
+      const titleEl = document.getElementById("compBadgeTitle");
+      const detailEl = document.getElementById("compBadgeDetail");
+      compSection.classList.remove("hidden");
+
+      // 排序所有紀錄
+      allRecords.sort((a, b) => b.score - a.score);
+
+      // 篩選出該玩家的所有紀錄
+      const playerRecords = allRecords.filter(r => r.name.toLowerCase() === name.toLowerCase());
+      const playerBest = playerRecords.length > 0 ? playerRecords[0].score : currentScore;
+      const totalAttempts = playerRecords.length;
+
+      // 算出全服排名
+      const rankIdx = allRecords.findIndex(r => r.name.toLowerCase() === name.toLowerCase());
+      const rank = rankIdx !== -1 ? (rankIdx + 1) : 1;
+
+      if (currentScore >= playerBest) {
+        compSection.className = "compare-badge new-record";
+        titleEl.innerHTML = `<span>🎉</span> <span>太神啦！刷新個人歷史最高紀錄！</span>`;
+        detailEl.innerHTML = `
+          <div>本次得分：<b style="color:var(--neon-yellow);">${currentScore.toLocaleString()}</b> 分</div>
+          <div>恭喜刷新您的個人最高分！在全服名列 <b style="color:var(--neon-blue);">第 ${rank} 名</b>！</div>
+          <div>您已在本遊戲累積挑戰 <b>${totalAttempts}</b> 次，快看看排行榜有沒有登上冠軍！</div>
+        `;
+      } else {
+        const diff = playerBest - currentScore;
+        compSection.className = "compare-badge below-record";
+        titleEl.innerHTML = `<span>📈</span> <span>個人戰力比對分析</span>`;
+        detailEl.innerHTML = `
+          <div>本次得分：<b>${currentScore.toLocaleString()}</b> 分</div>
+          <div>您個人的歷史最高紀錄為：<b style="color:var(--neon-yellow);">${playerBest.toLocaleString()}</b> 分（距離最佳差 <b>${diff.toLocaleString()}</b> 分）。</div>
+          <div>您在全服歷史總榜最高名列 <b style="color:var(--neon-blue);">第 ${rank} 名</b>，累積挑戰 <b>${totalAttempts}</b> 次。持續突破極限！</div>
+        `;
+      }
+
+      document.getElementById("nameInputSection").classList.add("hidden");
+    }
+
+    /* ================================================================
+       10. 排行榜 Modal 展示
+       ================================================================ */
+    const openLbBtn = document.getElementById("openLeaderboardBtn");
+    const closeLbBtn = document.getElementById("closeLeaderboardBtn");
+    const lbCloseBottomBtn = document.getElementById("lbCloseBottomBtn");
+    const modalViewRankBtn = document.getElementById("modalViewRankBtn");
+    const lbModal = document.getElementById("leaderboardModal");
+
+    openLbBtn.addEventListener("click", openLeaderboard);
+    modalViewRankBtn.addEventListener("click", openLeaderboard);
+    closeLbBtn.addEventListener("click", () => lbModal.classList.add("hidden"));
+    lbCloseBottomBtn.addEventListener("click", () => lbModal.classList.add("hidden"));
+
+    document.getElementById("modalRestartBtn").addEventListener("click", () => {
+      document.getElementById("gameOverModal").classList.add("hidden");
+      startGame();
+    });
+
+    async function openLeaderboard() {
+      lbModal.classList.remove("hidden");
+      const tbody = document.getElementById("leaderboardTbody");
+      const summaryText = document.getElementById("lbPlayerSummaryText");
+
+      tbody.innerHTML = '<tr><td colspan="5" style="text-align: center; color: #94a3b8; padding: 20px;"><span class="loading-spinner"></span> 正在讀取 Google Sheet 雲端排行榜...</td></tr>';
+
+      const currentName = localStorage.getItem("tetris_player_name") || "";
+      const records = await fetchAllRecords();
+      records.sort((a, b) => b.score - a.score);
+
+      // 個人統計
+      if (currentName) {
+        const pRecs = records.filter(r => r.name.toLowerCase() === currentName.toLowerCase());
+        const best = pRecs.length > 0 ? pRecs[0].score : 0;
+        const rankIdx = records.findIndex(r => r.name.toLowerCase() === currentName.toLowerCase());
+        const rankStr = rankIdx !== -1 ? `第 ${rankIdx + 1} 名` : "未上榜";
+        summaryText.innerHTML = `
+          <span>👤 玩家：<b>${escapeHtml(currentName)}</b></span>
+          <span>🏆 個人最佳：<b>${best.toLocaleString()}</b> 分 (排名：${rankStr})</span>
+        `;
+      } else {
+        summaryText.innerHTML = `<span>玩一局並留下名字，即可比較個人歷史成績！</span>`;
+      }
+
+      // Top 10
+      const top10 = records.slice(0, 10);
+      if (top10.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="5" style="text-align: center; color: #94a3b8; padding: 20px;">尚無紀錄，成為第一個上榜的玩家吧！</td></tr>';
+        return;
+      }
+
+      let html = "";
+      top10.forEach((row, idx) => {
+        const rank = idx + 1;
+        const isCurrent = currentName && row.name.toLowerCase() === currentName.toLowerCase();
+        let rankBadge = `<span class="rank-badge">${rank}</span>`;
+        if (rank === 1) rankBadge = `<span class="rank-badge rank-1">🥇</span>`;
+        else if (rank === 2) rankBadge = `<span class="rank-badge rank-2">🥈</span>`;
+        else if (rank === 3) rankBadge = `<span class="rank-badge rank-3">🥉</span>`;
+
+        html += `
+          <tr class="${isCurrent ? 'current-user' : ''}">
+            <td>${rankBadge}</td>
+            <td style="font-weight: 600;">${escapeHtml(row.name)} ${isCurrent ? '<span style="font-size:0.7rem; color:var(--neon-blue);">(您)</span>' : ''}</td>
+            <td style="text-align: right; color: var(--neon-yellow); font-weight: bold;">${row.score.toLocaleString()}</td>
+            <td style="text-align: right;">${row.lines}</td>
+            <td style="text-align: right;">Lv.${row.level}</td>
+          </tr>
+        `;
+      });
+      tbody.innerHTML = html;
+    }
+
+    function escapeHtml(str) {
+      return String(str).replace(/[&<>"']/g, (m) => ({
+        '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
+      }[m]));
+    }
+
+    // 初次載入畫面繪製空盤
+    draw();
+  </script>
+</body>
+</html>
